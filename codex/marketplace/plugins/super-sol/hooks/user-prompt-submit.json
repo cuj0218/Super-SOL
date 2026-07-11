@@ -1,0 +1,22 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/hooks_impl/gate_prompt.py\"",
+            "timeout": 10,
+            "statusMessage": "(Super SOL) 작업 분류 중"
+          },
+          {
+            "type": "command",
+            "command": "bash \"${PLUGIN_ROOT}/hooks_impl/router.sh\"",
+            "timeout": 10,
+            "statusMessage": "(Super SOL) 필요한 절차만 준비"
+          }
+        ]
+      }
+    ]
+  }
+}

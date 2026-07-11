@@ -1,0 +1,16 @@
+{
+  "name": "super-sol",
+  "version": "0.1.0",
+  "description": "Automation-first quality harness for plain Codex. Drop it in and it works: classifies each request, injects only the minimal verified discipline, and blocks completion when code changed without a fresh check. No extra API calls, no key reading, no model switching, no billing.",
+  "license": "MIT",
+  "keywords": ["codex", "codex-plugin", "super-sol", "hooks", "verification", "beginner"],
+  "hooks": [
+    "./hooks/user-prompt-submit.json",
+    "./hooks/post-tool-use.json",
+    "./hooks/stop.json"
+  ],
+  "interface": {
+    "displayName": "Super SOL",
+    "shortDescription": "Auto quality harness for Codex — verification without the setup"
+  }
+}

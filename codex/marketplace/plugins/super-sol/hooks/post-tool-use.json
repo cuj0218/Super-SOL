@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/hooks_impl/gate_post_tool.py\"",
+            "timeout": 10,
+            "statusMessage": "(Super SOL) 진행 상황 확인"
+          }
+        ]
+      }
+    ]
+  }
+}
