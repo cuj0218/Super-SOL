@@ -16,6 +16,8 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
+from fablized_sol.engine.models import ReasoningEffort
+
 
 @dataclass(frozen=True, slots=True)
 class ManifestParseError(Exception):
@@ -133,11 +135,26 @@ class EvalOptions(BaseModel):
     output_dir: Path
     run_id: StrictStr = Field(min_length=1, pattern=r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$")
     models: ComparisonModels
+    product_effort: ReasoningEffort = ReasoningEffort.MEDIUM
+    reference_effort: ReasoningEffort = ReasoningEffort.MEDIUM
     max_gate_retries: int = Field(ge=0, le=5)
     dry_run: bool
     arm_design: ArmDesign = ArmDesign.HOLDOUT
     verification_image: VerificationImage | None = None
     grader_image: VerificationImage | None = None
+
+    @property
+    def effort_by_model(self) -> dict[str, ReasoningEffort]:
+        """Map each configured model to its reasoning effort.
+
+        Effort follows model identity, not position, so crossover model-order
+        reversal cannot swap a model's recorded effort.
+        """
+        product_model, reference_model = self.models
+        return {
+            product_model: self.product_effort,
+            reference_model: self.reference_effort,
+        }
 
     @model_validator(mode="after")
     def require_live_verification_image(self) -> Self:

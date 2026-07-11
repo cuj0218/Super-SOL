@@ -76,6 +76,10 @@ reportPrivateUsage = "error"
 target-version = "py312"
 line-length = 100
 src = ["src", "tests"]
+# The Codex plugin under codex/ is a separate deliverable with its own
+# conventions (hook scripts, plain pytest asserts) and its own test run;
+# it is not part of the strict Python package profile.
+extend-exclude = ["codex"]
 
 [tool.ruff.lint]
 # typeCheckingMode = "all" and Ruff ANN rules enforce return annotations.

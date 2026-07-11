@@ -4,10 +4,11 @@ import shutil
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, assert_never, final
+from typing import Final, Literal, assert_never, cast, final
 
-from agents import ModelResponse, Tool
+from agents import ModelResponse, ModelSettings, Tool
 from anyio import to_thread
+from openai.types.shared import Reasoning
 
 from fablized_sol.engine.events import (
     ClassifyEvent,
@@ -43,6 +44,15 @@ _BASE_INSTRUCTIONS: Final = (
     "Use the configured verification tool to check the result before finishing."
 )
 _TOOLS: Final[tuple[Tool, ...]] = (list_files, read_file, write_file, run_verification)
+type _AppliedEffort = Literal["low", "medium", "high", "xhigh"]
+_APPLIED_EFFORTS: Final[frozenset[str]] = frozenset({"low", "medium", "high", "xhigh"})
+
+
+def _model_settings_for(effort: str) -> ModelSettings:
+    """Build reasoning settings from a recorded effort; empty for 'unspecified'."""
+    if effort in _APPLIED_EFFORTS:
+        return ModelSettings(reasoning=Reasoning(effort=cast("_AppliedEffort", effort)))
+    return ModelSettings()
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,6 +63,7 @@ class PlannedRun:
     model: str
     session_id: SessionId
     arm: HoldoutArm
+    effort: str = "unspecified"
 
 
 @final
@@ -144,6 +155,7 @@ async def execute_live(
         tools=_TOOLS,
         instructions=bundle.instructions,
         response_observer=run.usage,
+        model_settings=_model_settings_for(run.planned.effort),
     )
     return await run_fablized(
         executor,
@@ -187,6 +199,7 @@ def finished_event(
         session_id=run.planned.session_id,
         arm=run.planned.arm,
         model=run.planned.model,
+        effort=run.planned.effort,
         status=status,
         wall_time_seconds=time.monotonic() - run.started,
         tool_calls=tool_calls,
@@ -210,6 +223,7 @@ def empty_finished_event(
         session_id=planned.session_id,
         arm=planned.arm,
         model=planned.model,
+        effort=planned.effort,
         status=status,
         wall_time_seconds=0,
         tool_calls=0,

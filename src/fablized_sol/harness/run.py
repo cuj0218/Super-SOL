@@ -7,6 +7,7 @@ from agents import (
     Agent,
     GuardrailFunctionOutput,
     Model,
+    ModelSettings,
     OutputGuardrailTripwireTriggered,
     Runner,
     Tool,
@@ -131,6 +132,7 @@ class SdkAttemptExecutor:
     tools: tuple[Tool, ...]
     instructions: str
     response_observer: ModelResponseObserver | None = None
+    model_settings: ModelSettings | None = None
 
     async def execute(self, request: AttemptRequest) -> AttemptCompleted | AttemptBlocked:
         """Run one agent and retain the SDK guardrail's nested blocked output."""
@@ -147,6 +149,7 @@ class SdkAttemptExecutor:
             tools=list(self.tools),
             instructions=self.instructions,
             output_guardrails=output_guardrails,
+            model_settings=self.model_settings or ModelSettings(),
         )
         try:
             hooks = (

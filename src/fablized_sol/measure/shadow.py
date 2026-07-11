@@ -23,6 +23,7 @@ class _ShadowBase(BaseModel):
     session_id: SessionId
     arm: HoldoutArm
     model: str = Field(min_length=1)
+    effort: str = Field(default="unspecified", min_length=1)
 
 
 class RunPlanned(_ShadowBase):
