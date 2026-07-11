@@ -132,11 +132,38 @@ OPENAI_API_KEY=... uv run super-sol-eval \
 ```
 
 The defaults are product model `gpt-5.5` followed by controlled reference model
-`gpt-5.6-sol`, with two gate correction retries.
-GPT-5.6 Sol is a limited preview, so API access is not implied by installing this
-package. Use `--product-model`, `--reference-model`, and `--max-gate-retries` to
-override the defaults. A live run should be an explicit quota and workspace
-decision, not part of routine verification or CI.
+`gpt-5.6-sol`, with two gate correction retries. Use `--product-model`,
+`--reference-model`, `--product-effort`, `--reference-effort`, and
+`--max-gate-retries` to override the defaults. Reasoning effort
+(`low`/`medium`/`high`/`xhigh`) is recorded per model in `provenance.json` and in
+every shadow event, so a run id always pins its exact conditions. A live run
+should be an explicit quota and workspace decision, not part of routine
+verification or CI. Model access depends on your own account; installing this
+package does not grant it.
+
+## Model Generations
+
+The `gpt-5.5`-vs-`gpt-5.6-sol` pilot in this repository is a **frozen historical
+benchmark** from before the GPT-5.6 general release. Keep it as-is for
+traceability; do not read it as current model guidance.
+
+As of the GPT-5.6 general availability on 2026-07-09, the Sol / Terra / Luna
+tiers are generally available. Super SOL does not pin or promote a specific
+model as "the" recommended one — pick per task and record it via the flags
+above. A reasonable **starting** routing (lowest sufficient effort first, then
+escalate) is:
+
+| Tier | Best for | Start at |
+| --- | --- | --- |
+| Luna | clear, repetitive extract / classify / transform / summarize | low–medium |
+| Terra | everyday development and debugging (good default) | medium, high only when complex |
+| Sol | complex, ambiguous, high-value or high-risk work | high–xhigh; reserve max for a single very hard problem |
+
+This routing is **not yet Super-SOL-measured**. Treat it as guidance, not a
+performance claim; validating it requires its own preregistered crossover
+(see [Day 7 promotion threshold](docs/DAY7_REVIEW.md)). Dates and tier behavior
+follow the provider's current model documentation, which supersedes any specific
+version named here.
 
 Live evaluation requires a working Docker runtime and two images pinned by
 immutable `sha256` digests. The verifier image is model-callable and contains
