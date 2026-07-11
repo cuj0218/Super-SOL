@@ -26,6 +26,16 @@ class HoldoutArm(StrEnum):
 
 
 @unique
+class ReasoningEffort(StrEnum):
+    """Reasoning effort recorded per model so a run's conditions are reproducible."""
+
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    XHIGH = "xhigh"
+
+
+@unique
 class ToolKind(StrEnum):
     """Behavioral category of a tool."""
 

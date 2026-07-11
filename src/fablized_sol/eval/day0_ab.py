@@ -9,7 +9,7 @@ import anyio
 import typer
 from pydantic import ValidationError
 
-from fablized_sol.engine.models import HoldoutArm, SessionId
+from fablized_sol.engine.models import HoldoutArm, ReasoningEffort, SessionId
 from fablized_sol.eval.grader import (
     GraderFailed,
     GraderInfrastructureError,
@@ -27,6 +27,12 @@ from fablized_sol.eval.manifest import ArmDesign, EvalOptions, TaskManifest
 from fablized_sol.harness.container_runtime import AnyioDockerRunner
 from fablized_sol.harness.run import RunCompleted, RunExhausted
 from fablized_sol.measure.holdout import assign_arm
+from fablized_sol.measure.provenance import (
+    RunProvenance,
+    git_commit,
+    harness_version,
+    write_provenance,
+)
 from fablized_sol.measure.shadow import RunPlanned, RunStarted, ShadowWriter
 from fablized_sol.measure.super_sol import SUPER_SOL_PROFILE
 
@@ -50,17 +56,44 @@ def _planned_runs(options: EvalOptions, manifest: TaskManifest) -> tuple[Planned
                 arms = tuple(reversed(arms))
             if int(_digest(f"{assignment_key}:model-order")[-1], 16) % 2:
                 models = tuple(reversed(models))
+        efforts = options.effort_by_model
         planned.extend(
             PlannedRun(
                 task=task,
                 model=model,
                 session_id=SessionId(_digest(f"{options.run_id}:{task.id}:{model}:{arm}")),
                 arm=arm,
+                effort=efforts[model].value,
             )
             for arm in arms
             for model in models
         )
     return tuple(planned)
+
+
+def _write_run_provenance(run_root: Path, options: EvalOptions) -> None:
+    """Pin the run's exact conditions (models, effort, images, commit) to disk."""
+    product_model, reference_model = options.models
+    profile, profile_version = RunProvenance.default_profile()
+    write_provenance(
+        run_root / "provenance.json",
+        RunProvenance(
+            run_id=options.run_id,
+            harness_version=harness_version(),
+            profile=profile,
+            profile_version=profile_version,
+            product_model=product_model,
+            product_effort=options.product_effort.value,
+            reference_model=reference_model,
+            reference_effort=options.reference_effort.value,
+            arm_design=options.arm_design.value,
+            max_gate_retries=options.max_gate_retries,
+            dry_run=options.dry_run,
+            verification_image=options.verification_image,
+            grader_image=options.grader_image,
+            git_commit=git_commit(),
+        ),
+    )
 
 
 def _grader_passed(
@@ -77,7 +110,7 @@ def _grader_passed(
             assert_never(result)
 
 
-async def run_evaluation(options: EvalOptions) -> int:  # noqa: C901, PLR0912
+async def run_evaluation(options: EvalOptions) -> int:  # noqa: C901, PLR0912, PLR0915
     """Own evaluation filesystem I/O and sequential live execution."""
     manifest = TaskManifest.load(options.tasks)
     options.output_dir.mkdir(parents=True, exist_ok=True)
@@ -86,6 +119,8 @@ async def run_evaluation(options: EvalOptions) -> int:  # noqa: C901, PLR0912
         run_root.mkdir()
     except FileExistsError:
         return 2
+
+    _write_run_provenance(run_root, options)
 
     writer = ShadowWriter(run_root / "events.jsonl")
     planned = _planned_runs(options, manifest)
@@ -96,6 +131,7 @@ async def run_evaluation(options: EvalOptions) -> int:  # noqa: C901, PLR0912
                 task_id=item.task.id,
                 arm=item.arm,
                 model=item.model,
+                effort=item.effort,
                 profile=SUPER_SOL_PROFILE.name,
                 profile_version=SUPER_SOL_PROFILE.version,
             )
@@ -111,7 +147,14 @@ async def run_evaluation(options: EvalOptions) -> int:  # noqa: C901, PLR0912
     (run_root / "ledgers").mkdir()
     failed = False
     for index, item in enumerate(planned):
-        writer.append(RunStarted(session_id=item.session_id, arm=item.arm, model=item.model))
+        writer.append(
+            RunStarted(
+                session_id=item.session_id,
+                arm=item.arm,
+                model=item.model,
+                effort=item.effort,
+            )
+        )
         run = create_live_run(item, run_root)
         try:
             image = options.verification_image
@@ -171,6 +214,8 @@ def evaluate(  # noqa: PLR0913
     run_id: Annotated[str, typer.Option()],
     product_model: Annotated[str, typer.Option()] = "gpt-5.5",
     reference_model: Annotated[str, typer.Option()] = "gpt-5.6-sol",
+    product_effort: Annotated[ReasoningEffort, typer.Option()] = ReasoningEffort.MEDIUM,
+    reference_effort: Annotated[ReasoningEffort, typer.Option()] = ReasoningEffort.MEDIUM,
     max_gate_retries: Annotated[int, typer.Option(min=0, max=5)] = 2,
     arm_design: Annotated[ArmDesign, typer.Option()] = ArmDesign.HOLDOUT,
     dry_run: Annotated[bool, typer.Option()] = False,
@@ -184,6 +229,8 @@ def evaluate(  # noqa: PLR0913
             output_dir=output_dir,
             run_id=run_id,
             models=(product_model, reference_model),
+            product_effort=product_effort,
+            reference_effort=reference_effort,
             max_gate_retries=max_gate_retries,
             dry_run=dry_run,
             arm_design=arm_design,

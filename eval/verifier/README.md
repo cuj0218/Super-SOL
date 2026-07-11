@@ -11,6 +11,21 @@ uv run --with pytest pytest -q -p no:cacheprovider /workspace
 The live harness requires a complete digest-pinned image reference. A plain local
 tag such as `fablized-sol-verifier:day0` is intentionally rejected.
 
+## Scan Before You Ship
+
+Both images run code inside the evaluation boundary (the grader executes the
+model's code), so they are gated on vulnerabilities. Run the supply-chain gate,
+which builds both images, **fails on any Critical/High CVE**, and writes an SBOM
+per image:
+
+```bash
+bash eval/verifier/scan_images.sh   # needs Docker + docker scout or trivy
+```
+
+See [SUPPLY_CHAIN.md](SUPPLY_CHAIN.md) for picking a clean `BASE_IMAGE` digest
+and attaching SBOMs as release evidence. The `image-scan` CI workflow runs the
+same gate on changes under `eval/verifier/**`.
+
 ## Build And Pin Locally
 
 ```bash
