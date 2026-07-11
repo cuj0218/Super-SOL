@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import cast
 
 import anyio
 
@@ -52,12 +53,14 @@ def test_dry_run_records_provenance_and_effort(tmp_path: Path) -> None:
     exit_code = anyio.run(run_evaluation, options)
     assert exit_code == 0
 
-    provenance = json.loads((tmp_path / "dryrun" / "provenance.json").read_text(encoding="utf-8"))
+    raw = (tmp_path / "dryrun" / "provenance.json").read_text(encoding="utf-8")
+    provenance = cast("dict[str, object]", json.loads(raw))
     assert provenance["product_effort"] == "high"
     assert provenance["reference_effort"] == "xhigh"
     assert provenance["git_commit"] is None or isinstance(provenance["git_commit"], str)
 
     events = (tmp_path / "dryrun" / "events.jsonl").read_text(encoding="utf-8").splitlines()
-    efforts = {json.loads(line)["model"]: json.loads(line)["effort"] for line in events}
+    parsed = [cast("dict[str, object]", json.loads(line)) for line in events]
+    efforts = {row["model"]: row["effort"] for row in parsed}
     assert efforts["gpt-5.5"] == "high"
     assert efforts["gpt-5.6-sol"] == "xhigh"
